@@ -8,6 +8,7 @@ func NewRouter() *gin.Engine {
 	router := gin.Default()
 
 	router.POST("/hello", helloHandler)
+	router.GET("/ls", lsHandler)
 
 	return router
 }
