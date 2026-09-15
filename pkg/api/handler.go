@@ -43,7 +43,7 @@ func lsHandler(c *gin.Context) {
 		return
 	}
 
-	output, err := exec.Command("sh", "-c", "ls "+path).CombinedOutput()
+	output, err := exec.Command("ls", path).CombinedOutput()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": strings.TrimSpace(string(output))})
 		return
