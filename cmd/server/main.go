@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.Printf("Initializing")
 	cfg := config.Load()
 
 	router := api.NewRouter()
