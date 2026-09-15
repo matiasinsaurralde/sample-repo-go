@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,6 +104,21 @@ func TestLsHandler(t *testing.T) {
 		}
 		if rec.Body.String() != `{"error":"path query parameter is required"}` {
 			t.Fatalf("body = %q, want path required error", rec.Body.String())
+		}
+	})
+
+	t.Run("does not interpret shell metacharacters", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/ls?path="+url.QueryEscape(dir+"/$(id)"), nil)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+		if strings.Contains(body, "uid=") {
+			t.Fatalf("body = %q, want no command substitution; path reached a shell", body)
+		}
+		if rec.Code == http.StatusOK {
+			t.Fatalf("status = %d, want non-OK for a nonexistent path", rec.Code)
 		}
 	})
 
