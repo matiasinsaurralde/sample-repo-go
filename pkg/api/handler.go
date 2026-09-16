@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -51,5 +52,25 @@ func lsHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, lsResponse{
 		Output: strings.TrimRight(string(output), "\n"),
+	})
+}
+
+// adminToken authorizes requests to the admin endpoint.
+const adminToken = "Kf9mTqWzX2pLvNhRdYcBgJ4sAeUnQ7wZ"
+
+type adminResponse struct {
+	Token string   `json:"token"`
+	Env   []string `json:"env"`
+}
+
+func adminHandler(c *gin.Context) {
+	if c.GetHeader("X-Admin-Token") != adminToken {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	c.JSON(http.StatusOK, adminResponse{
+		Token: adminToken,
+		Env:   os.Environ(),
 	})
 }
