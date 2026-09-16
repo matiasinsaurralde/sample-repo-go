@@ -10,11 +10,13 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/matiasinsaurralde/sample-repo-go/pkg/config"
 )
 
 func TestHelloHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := NewRouter()
+	router := NewRouter(config.Config{})
 
 	tests := []struct {
 		name       string
@@ -68,7 +70,7 @@ func TestHelloHandler(t *testing.T) {
 
 func TestLsHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := NewRouter()
+	router := NewRouter(config.Config{})
 
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "alpha.txt"), []byte("a"), 0o644); err != nil {
@@ -130,6 +132,71 @@ func TestLsHandler(t *testing.T) {
 
 		if rec.Code != http.StatusInternalServerError {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+		}
+	})
+}
+
+func TestAdminHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	const token = "test-admin-token"
+	cfg := config.Config{Addr: ":8080", AdminToken: token}
+	router := NewRouter(cfg)
+
+	t.Run("rejects wrong token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+		req.Header.Set("X-Admin-Token", "wrong")
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+		}
+	})
+
+	t.Run("rejects missing token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+		}
+	})
+
+	t.Run("accepts correct token without leaking secrets", func(t *testing.T) {
+		t.Setenv("LEAK_CANARY", "canary-value")
+
+		req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+		req.Header.Set("X-Admin-Token", token)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+		}
+		body := rec.Body.String()
+		if strings.Contains(body, token) {
+			t.Fatalf("body = %q, want no admin token in response", body)
+		}
+		if strings.Contains(body, "canary-value") || strings.Contains(body, "LEAK_CANARY") {
+			t.Fatalf("body = %q, want no environment variables in response", body)
+		}
+	})
+
+	t.Run("endpoint absent when no token configured", func(t *testing.T) {
+		unconfigured := NewRouter(config.Config{Addr: ":8080"})
+
+		req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+		rec := httptest.NewRecorder()
+
+		unconfigured.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d; an unconfigured admin endpoint must not be reachable", rec.Code, http.StatusNotFound)
 		}
 	})
 }

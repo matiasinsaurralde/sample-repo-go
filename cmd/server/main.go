@@ -12,7 +12,7 @@ func main() {
 	log.Printf("Initializing 2")
 	cfg := config.Load()
 
-	router := api.NewRouter()
+	router := api.NewRouter(cfg)
 	log.Printf("listening on %s", cfg.Addr)
 	if err := router.Run(cfg.Addr); err != nil {
 		log.Fatal(err)
