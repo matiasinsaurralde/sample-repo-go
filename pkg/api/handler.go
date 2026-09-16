@@ -1,12 +1,15 @@
 package api
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/matiasinsaurralde/sample-repo-go/pkg/config"
 )
 
 type helloRequest struct {
@@ -55,22 +58,23 @@ func lsHandler(c *gin.Context) {
 	})
 }
 
-// adminToken authorizes requests to the admin endpoint.
-const adminToken = "Kf9mTqWzX2pLvNhRdYcBgJ4sAeUnQ7wZ"
-
 type adminResponse struct {
-	Token string   `json:"token"`
-	Env   []string `json:"env"`
+	Addr string `json:"addr"`
 }
 
-func adminHandler(c *gin.Context) {
-	if c.GetHeader("X-Admin-Token") != adminToken {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+// adminHandler reports non-sensitive service information. The token is
+// supplied by configuration and compared in constant time; the response
+// deliberately excludes the token and the process environment.
+func adminHandler(cfg config.Config) gin.HandlerFunc {
+	expected := sha256.Sum256([]byte(cfg.AdminToken))
 
-	c.JSON(http.StatusOK, adminResponse{
-		Token: adminToken,
-		Env:   os.Environ(),
-	})
+	return func(c *gin.Context) {
+		provided := sha256.Sum256([]byte(c.GetHeader("X-Admin-Token")))
+		if subtle.ConstantTimeCompare(provided[:], expected[:]) != 1 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		c.JSON(http.StatusOK, adminResponse{Addr: cfg.Addr})
+	}
 }
