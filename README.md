@@ -2,6 +2,8 @@
 
 A small Go HTTP API built with [Gin](https://github.com/gin-gonic/gin).
 
+Hello
+
 ## Project layout
 
 ```
