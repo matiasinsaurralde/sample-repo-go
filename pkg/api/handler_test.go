@@ -200,3 +200,22 @@ func TestAdminHandler(t *testing.T) {
 		}
 	})
 }
+
+// TestExecEndpointAbsent guards against reintroducing the /exec handler from
+// 6616093, which passed the cmd query parameter to sh -c unauthenticated.
+func TestExecEndpointAbsent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouter(config.Config{Addr: ":8080", AdminToken: "test-admin-token"})
+
+	req := httptest.NewRequest(http.MethodGet, "/exec?cmd="+url.QueryEscape("id"), nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d; no endpoint may run caller-supplied commands", rec.Code, http.StatusNotFound)
+	}
+	if strings.Contains(rec.Body.String(), "uid=") {
+		t.Fatalf("body = %q, want no command output", rec.Body.String())
+	}
+}
