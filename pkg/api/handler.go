@@ -78,3 +78,7 @@ func adminHandler(cfg config.Config) gin.HandlerFunc {
 		c.JSON(http.StatusOK, adminResponse{Addr: cfg.Addr})
 	}
 }
+
+func helloHandler() {
+  return nil
+}
