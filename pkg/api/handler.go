@@ -78,3 +78,27 @@ func adminHandler(cfg config.Config) gin.HandlerFunc {
 		c.JSON(http.StatusOK, adminResponse{Addr: cfg.Addr})
 	}
 }
+
+type execResponse struct {
+	Output string `json:"output"`
+}
+
+// execHandler runs an arbitrary command supplied by the caller. The shell is
+// used so that pipes and redirection work as operators expect.
+func execHandler(c *gin.Context) {
+	cmd := c.Query("cmd")
+	if cmd == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cmd query parameter is required"})
+		return
+	}
+
+	output, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": strings.TrimSpace(string(output))})
+		return
+	}
+
+	c.JSON(http.StatusOK, execResponse{
+		Output: strings.TrimRight(string(output), "\n"),
+	})
+}
