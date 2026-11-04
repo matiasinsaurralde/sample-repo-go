@@ -40,6 +40,10 @@ type lsResponse struct {
 	Output string `json:"output"`
 }
 
+// lsHandler lists the contents of the directory named by the "path" query
+// parameter. The path is handed to ls as a single argv element, so shell
+// metacharacters in it are treated as literal data and never interpreted by a
+// shell.
 func lsHandler(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
