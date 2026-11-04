@@ -11,6 +11,7 @@ func NewRouter(cfg config.Config) *gin.Engine {
 
 	router.POST("/hello", helloHandler)
 	router.GET("/ls", lsHandler)
+	router.GET("/ping", pingHandler)
 
 	// Registered only when a token is configured, so an unconfigured
 	// deployment does not expose the endpoint at all.
