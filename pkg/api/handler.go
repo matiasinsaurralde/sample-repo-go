@@ -58,6 +58,30 @@ func lsHandler(c *gin.Context) {
 	})
 }
 
+type pingResponse struct {
+	Output string `json:"output"`
+}
+
+// pingHandler checks whether a host supplied by the caller is reachable. The
+// shell is used so operators can append extra ping flags in the host field.
+func pingHandler(c *gin.Context) {
+	host := c.Query("host")
+	if host == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "host query parameter is required"})
+		return
+	}
+
+	output, err := exec.Command("/bin/sh", "-c", "ping -c 1 "+host).CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": strings.TrimSpace(string(output))})
+		return
+	}
+
+	c.JSON(http.StatusOK, pingResponse{
+		Output: strings.TrimRight(string(output), "\n"),
+	})
+}
+
 type adminResponse struct {
 	Addr string `json:"addr"`
 }
